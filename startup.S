@@ -38,8 +38,7 @@ lp1_end:
         orr  r0, r0, #0x12
         msr  cpsr_c, r0
         nop
-        @ Initialiser le pointeur de pile
-	    @ TODO Quelle valeur mettre ?
+        @ Initialiser le pointeur de pile IRQ.
         ldr  r0, =MEMORY_END
     	mov  sp, r0
         @ Passer en mode SYS.
@@ -48,9 +47,9 @@ lp1_end:
         orr  r0, r0, #0x1f
         msr  cpsr_c, r0
         nop
-		@ Initialiser le pointeur de pile.
-        @ TODO Quelle valeur mettre ?
+		@ Initialiser le pointeur de pile SYS.
 		ldr  r0, =MEMORY_END
+        sub  r0, r0, #6000
 		mov  sp, r0
 		@ Appel au main() du C.
 		bl  main

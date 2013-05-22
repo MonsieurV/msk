@@ -129,20 +129,24 @@ void __attribute__((naked)) scheduler( void )
   /* Sauvegarder le contexte complet sur la pile IRQ */
   __asm__ __volatile__(
 									/* Sauvegarde registres mode system */
-									/* Attendre un cycle */
+		/* Attendre un cycle */
+        "nop\t\n"
 									/* Ajustement pointeur de pile */
 									/* Sauvegarde de spsr_irq */
 						);			/* et de lr_irq */
 
-  if (_ack_timer)                 /* Réinitialiser le timer si nécessaire */
-  {
-    							/* Acquiter l'événement de comparaison du Timer pour pouvoir */
-								/* obtenir le déclencement d'une prochaine interruption */
-  }
-  else
-  {
-    _ack_timer = 1;
-  }
+    if (_ack_timer)                 /* Réinitialiser le timer si nécessaire */
+    {
+    	/* Acquiter l'événement de comparaison du Timer pour pouvoir */
+    	/* obtenir le déclencement d'une prochaine interruption */
+        // YTO: Mettre TSTAT_COMP à 0;
+        struct imx_timer * timer = TIMER1_BASE;
+        (*timer).tstat = TSTAT_COMP & !TSTAT_COMP;
+    }
+    else
+    {
+        _ack_timer = 1;
+    }
 
 									/* memoriser le pointeur de pile */
 									/* recherche du suivant */
@@ -188,6 +192,9 @@ void  schedule( void )
 	/* Debut section critique */
     _lock_();
 
+    // YTO: Ne pas acquitter le timer si on a provoqué manuellement l'exception.
+    _ack_timer = 0;
+
     /* On simule une exception irq pour forcer un appel correct à scheduler().*/
 	/* Passer en mode IRQ */
     _set_arm_mode_(ARMMODE_IRQ);
@@ -203,9 +210,10 @@ void  schedule( void )
          * mais celle d'après.
          * Quelle est la valeur de pc lors de l'instruction " mov  lr, pc" ?
          * D'après http://stackoverflow.com/questions/2102921/strange-behaviour-of-ldr-pc-value
-         * la valeur est celle de l'instruction suivante (la courante + 4 bytes).
-         * Il faut donc encore décaler de 8 bytes pour obtenir l'instruction à n+2. */
-        "add  lr, #8\t\n"
+         * la valeur est celle de l'instruction suivante (la courante + 12 bytes).
+         * Il faut donc encore décaler de 12 bytes pour obtenir l'instruction à n+2.
+         * TODO Vérifier en debug. */
+        "add  lr, #12\t\n"
         
 	    /* Saut à scheduler */
         /* YTO: Faire exécuter le vecteur d'exception IRQ
