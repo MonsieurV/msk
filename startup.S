@@ -31,27 +31,8 @@ lp1_check:
 		str  r2, [r0], #4
 		b  lp1_check
 lp1_end:
-        @ Initialiser les registres des modes IRQ et SYS.
-        @ Passer en mode IRQ
-        mrs  r0, cpsr
-        bic  r0, r0, #0x1f
-        orr  r0, r0, #0x12
-        msr  cpsr_c, r0
-        nop
-        @ Initialiser le pointeur de pile IRQ.
-        ldr  r0, =MEMORY_END
-    	mov  sp, r0
-        @ Passer en mode SYS.
-        mrs  r0, cpsr
-        bic  r0, r0, #0x1f
-        orr  r0, r0, #0x1f
-        msr  cpsr_c, r0
-        nop
 		@ Initialiser le pointeur de pile SYS.
 		ldr  r0, =MEMORY_END
-        @ On a 8 tâches dans la pile IRQ, avec 2048 octets, soit 16384
-        @ TODO Rajouter de l'espace ?
-        sub  r0, r0, #16384
 		mov  sp, r0
 		@ Appel au main() du C.
 		bl  main

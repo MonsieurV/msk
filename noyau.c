@@ -25,7 +25,7 @@ int  _ack_timer = 1;              /* = 1 si il faut acquitter le timer */
  *----------------------------------------------------------------------- --*/
 void	noyau_exit(void)
 {
-  	/* Désactiver les interruptions */
+    /* Désactiver les interruptions */
     printf("Sortie du noyau\n");
 	/* afficher par exemple le nombre d'activation de chaque tache */
 								
@@ -156,8 +156,8 @@ void __attribute__((naked)) scheduler( void )
     	/* Acquiter l'événement de comparaison du Timer pour pouvoir */
     	/* obtenir le déclencement d'une prochaine interruption */
         // YTO: Mettre TSTAT_COMP à 0;
-        struct imx_timer * timer = TIMER1_BASE;
-        (*timer).tstat = TSTAT_COMP & !TSTAT_COMP;
+        struct imx_timer* tim1 = (struct imx_timer *) TIMER1_BASE;
+        tim1->tstat &= ~TSTAT_COMP;
     }
     else
     {
@@ -269,25 +269,42 @@ void	start( TACHE_ADR adr_tache )
         _contexte[j].status = NCREE;
     }
     /* initialisation de la tache courante */
+    _tache_c = 0;
 	/* initialisation de la file           */
     file_init();
 
 	/* Initialisation de la variable Haut de la pile des tâches */
-    
+    _tos = sp;
 	/* Passer en mode IRQ */
     _set_arm_mode_(ARMMODE_IRQ);
-									/* sp_irq initial */
-									/* Repasser en mode SYS */
+	/* sp_irq initial */
+    sp = _tos;
+	/* Repasser en mode SYS */
+    _set_arm_mode_(ARMMODE_SYS);
 
-									/* on interdit les interruptions */
+	/* on interdit les interruptions */
+    _irq_disable_();
 
-  /* Initialisation du timer à 100 Hz */
+    /* Initialisation du timer à 100 Hz */
+    // YTO/TBE : TCTCL1 : SWR = 0 - FRR = 0 - CAP = 00 - OM = 0 - IRQEN = 1 - CLKSOURCE = 010 - TEN = 1
+    // TODO Faire avec des maks.
+    // tim1->tctl |= TCTL_SWR | TCTL_FRR | TCTL_CAP_ANY | TCTL_OM;
+    // tim1->tctl = tim1->tctl & ~TCTL_IRQEN;
+    // tim1->tctl = tim1->tctl | TCTL_CLKSOURCE_PERCLK;
+	tim1->tctl = 0x15;
+    // YTO/TBE : TPRER : 0X64 = 100 decimal
+	tim1->tprer = 0x64;
+    // YTO/TBE : TCMP1 : 0X64 = 100 decimal
+	tim1->tcmp = 0x64;
+    
+    /* Initialisation de l'AITC */
+    aitc->nimask = 0x1F;
+    aitc->inttypeh = 0x08000000;
+    aitc->inttypel = 0;
+    aitc->nipriority[7] = 0xF000;
 
-  
-  /* Initialisation de l'AITC */
-  
-
-									/* creation et activation premiere tache */
+    /* creation et activation premiere tache */
+    active(cree(adr_tache));
 }
 
 
