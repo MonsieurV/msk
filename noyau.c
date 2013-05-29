@@ -42,10 +42,15 @@ void	noyau_exit(void)
  *----------------------------------------------------------------------- --*/
 void  fin_tache(void)
 {
-  /* on interdit les interruptions */
-	
-  /* la tache est enlevee de la file des taches */
-
+    /* on interdit les interruptions */
+    _irq_disable_();
+    
+    /* la tache est enlevee de la file des taches */
+    _contexte[_tache_c].status = CREE;
+    retire(_tache_c);
+    
+    /* TBE : Reactivation des interruptions */
+    _irq_enable_();
 }
 
 /*--------------------------------------------------------------------------*
@@ -64,8 +69,10 @@ uint16_t cree( TACHE_ADR adr_tache )
   static   uint16_t tache = -1;   /* contient numero dernier cree */
 
 
-									/* debut section critique */
-									/* numero de tache suivant */
+	/* debut section critique */
+    _lock_();
+    
+	/* numero de tache suivant */
 
   if (tache >= MAX_TACHES)        /* sortie si depassement */
 	{
@@ -77,7 +84,8 @@ uint16_t cree( TACHE_ADR adr_tache )
 									/* allocation d'une pile a la tache */
 									/* decrementation du pointeur de pile pour la prochaine tache. */
 
-									/* fin section critique */
+	/* fin section critique */
+    _unlock_();
 
 									/* memorisation adresse debut de tache */
 									/* mise a l'etat CREE */
@@ -128,12 +136,20 @@ void __attribute__((naked)) scheduler( void )
 
   /* Sauvegarder le contexte complet sur la pile IRQ */
   __asm__ __volatile__(
-									/* Sauvegarde registres mode system */
+		/* Sauvegarde registres mode system */
+        /* TBE : Mémorise r1, r2, .... , r15 dans la pile (pointe toujour sur la pile system) */
+        
 		/* Attendre un cycle */
         "nop\t\n"
-									/* Ajustement pointeur de pile */
-									/* Sauvegarde de spsr_irq */
-						);			/* et de lr_irq */
+		
+        /* Ajustement pointeur de pile */
+        /* TBE : Modifier le pointeur de pile pour pointer sur la pile IRQ */
+        
+		/* Sauvegarde de spsr_irq */
+        /* et de lr_irq */
+        /* TBE : Sauvegarder spsr_irq (contient cpsr avant system) et lr_irq (contient pc après interupt) sur la pile IRQ
+        
+						);			
 
     if (_ack_timer)                 /* Réinitialiser le timer si nécessaire */
     {
@@ -174,9 +190,11 @@ void __attribute__((naked)) scheduler( void )
 									/* Restaurer lr_irq */
 									/* et spsr_irq */
 									/* Restaurer registres mode system */
-									/* Attendre un cycle */
-									/* Ajuster pointeur de pile irq */
-					  );   			/* Retour d'exception */
+		/* Attendre un cycle */
+        "nop\t\n"
+                            		/* Ajuster pointeur de pile irq */
+                                    /* Retour d'exception */
+					  );
 }
 
 
@@ -240,20 +258,24 @@ void  schedule( void )
  *--------------------------------------------------------------------------*/
 void	start( TACHE_ADR adr_tache )
 {
-  short j;
-  register unsigned int sp asm("sp");
-  struct imx_timer* tim1 = (struct imx_timer *) TIMER1_BASE;
-  struct imx_aitc* aitc = (struct imx_aitc *) AITC_BASE;
+    short j;
+    register unsigned int sp asm("sp");
+    struct imx_timer* tim1 = (struct imx_timer *) TIMER1_BASE;
+    struct imx_aitc* aitc = (struct imx_aitc *) AITC_BASE;
+    
+    for (j=0; j<MAX_TACHES; j++)
+    {
+        /* initialisation de l'etat des taches */
+        _contexte[j].status = NCREE;
+    }
+    /* initialisation de la tache courante */
+	/* initialisation de la file           */
+    file_init();
 
-  for (j=0; j<MAX_TACHES; j++)
-  {
-									/* initialisation de l'etat des taches */
-  }
-									/* initialisation de la tache courante */
-									/* initialisation de la file           */
-
-									/* Initialisation de la variable Haut de la pile des tâches */
-									/* Passer en mode IRQ */
+	/* Initialisation de la variable Haut de la pile des tâches */
+    
+	/* Passer en mode IRQ */
+    _set_arm_mode_(ARMMODE_IRQ);
 									/* sp_irq initial */
 									/* Repasser en mode SYS */
 

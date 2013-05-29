@@ -49,8 +49,12 @@ lp1_end:
         nop
 		@ Initialiser le pointeur de pile SYS.
 		ldr  r0, =MEMORY_END
-        sub  r0, r0, #6000
+        @ On a 8 tâches dans la pile IRQ, avec 2048 octets, soit 16384
+        @ TODO Rajouter de l'espace ?
+        sub  r0, r0, #16384
 		mov  sp, r0
 		@ Appel au main() du C.
 		bl  main
+        @ Sortie du main : on ne fait rien, on arrête l'exécution.
+        b  .
 .end
