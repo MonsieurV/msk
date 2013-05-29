@@ -48,8 +48,11 @@ void	ajoute ( uint16_t n )
     uint16_t next_queue;
     // EXCEPTION : hors indice.
     if(n >= MAX_TACHES) {
-        // TODO Exception
-        return;
+        #if DEBUG
+            return;
+        #else
+            _fatal_exception_();
+        #endif
     }
     // CAS PARTICULIER : la pile est vide.
     if(_queue == F_VIDE) {
@@ -78,8 +81,11 @@ void	retire( uint16_t t )
     uint16_t i, previous_t;
     // EXCEPTION : hors indice.
     if(t >= MAX_TACHES) {
-        // TODO Exception
-        return;
+        #if DEBUG
+            return;
+        #else
+            _fatal_exception_();
+        #endif
     }
     // CAS GENERAL.
     // Recuperation tâche precedente

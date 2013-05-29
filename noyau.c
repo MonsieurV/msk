@@ -30,7 +30,7 @@ void	noyau_exit(void)
 	/* afficher par exemple le nombre d'activation de chaque tache */
 								
 	/* Terminer l'exécution */
-	
+	exit(0);
 }
 
 /*--------------------------------------------------------------------------*
@@ -49,8 +49,8 @@ void  fin_tache(void)
     _contexte[_tache_c].status = CREE;
     retire(_tache_c);
     
-    /* TBE : Reactivation des interruptions */
-    _irq_enable_();
+    /* TBE : Réordonnancer les tâches (schedule réactive les interruption IRQ) */
+    schedule();
 }
 
 /*--------------------------------------------------------------------------*
@@ -73,23 +73,34 @@ uint16_t cree( TACHE_ADR adr_tache )
     _lock_();
     
 	/* numero de tache suivant */
+    tache++;
 
-  if (tache >= MAX_TACHES)        /* sortie si depassement */
-	{
-				/* sortie car depassement       */
+    if (tache >= MAX_TACHES)        /* sortie si depassement */
+    {
+	    /* sortie car depassement       */
+        _fatal_exception_();        
 	}	
 
-									/* contexte de la nouvelle tache */
+	/* contexte de la nouvelle tache */
+    p = _contexte[tache];
+    
 
-									/* allocation d'une pile a la tache */
-									/* decrementation du pointeur de pile pour la prochaine tache. */
+	/* allocation d'une pile a la tache */
+    p->sp_ini = _tos;
+    p->sp_irq = _tos - PILE_TACHE;
+    
+	/* decrementation du pointeur de pile pour la prochaine tache. */
+    _tos = _tos - PILE_IRQ - PILE_TACHE;
 
 	/* fin section critique */
     _unlock_();
 
-									/* memorisation adresse debut de tache */
-									/* mise a l'etat CREE */
-  return(tache);                  /* tache est un uint16_t */
+	/* memorisation adresse debut de tache */
+    p->tache_adr = adr_tache;
+    /* mise a l'etat CREE */
+    p->status= CREE;
+    
+    return(tache);                  /* tache est un uint16_t */
 }
 
 /*--------------------------------------------------------------------------*
@@ -104,21 +115,31 @@ uint16_t cree( TACHE_ADR adr_tache )
  *--------------------------------------------------------------------------*/
 void  active( uint16_t tache )
 {
-  CONTEXTE *p = &_contexte[tache]; /* acces au contexte tache */
+    CONTEXTE *p = &_contexte[tache]; /* acces au contexte tache */
 
-  if (p->status == NCREE)
-  {
-				/* sortie du noyau         		 */
-  }
-
-									/* debut section critique */
-  if (p->status == CREE)          	/* n'active que si receptif */
-  {
-									/* changement d'etat, mise a l'etat PRET */
-									/* ajouter la tache dans la liste */
-									/* activation d'une tache prete */
-  }
-									/* fin section critique */
+    if (p->status == NCREE)
+    {
+		/* sortie du noyau         		 */
+        _fatal_exception_();
+    }
+    
+	/* debut section critique */
+    _lock_();
+    
+    if (p->status == CREE)          	/* n'active que si receptif */
+    {
+	    /* changement d'etat, mise a l'etat PRET */
+        p->status = PRET;
+        
+	    /* ajouter la tache dans la liste */
+        ajoute(tache);
+        
+	    /* activation d'une tache prete */
+        schedule();    
+    }
+    
+	/* fin section critique */
+    _unlock_();
 }
 
 
@@ -337,6 +358,14 @@ void  dort(void)
 
 void reveille(uint16_t t)
 {
+    CONTEXTE *p = &_contexte[t]; /* acces au contexte tache */
 
+    if (p->status == NCREE)
+    {
+    	/* sortie du noyau         		 */
+        _fatal_exception_();
+    }
+    
+    // TODO : finir
 }
 
