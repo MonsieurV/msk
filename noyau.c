@@ -157,20 +157,29 @@ void __attribute__((naked)) scheduler( void )
 
   /* Sauvegarder le contexte complet sur la pile IRQ */
   __asm__ __volatile__(
-		/* Sauvegarde registres mode system */
-        /* TBE : Mémorise r1, r2, .... , r15 dans la pile (pointe toujour sur la pile system) */
+        /* Sauvegarde registres mode system */
+        /* TBE : Mémorise r0, r1, .... , r12 du mode systeme dans la pile IRQ */
+        /* Question : Pourquoi prendre les registre de r0-r12 du mode usr/sys alors qu'ils sont inchangé au changement en mode irq */
+        "stmfd sp!, {r0-r12}^\t\n"
         
-		/* Attendre un cycle */
+    	/* Attendre un cycle */
         "nop\t\n"
-		
+    
         /* Ajustement pointeur de pile */
-        /* TBE : Modifier le pointeur de pile pour pointer sur la pile IRQ */
+        /* TBE : l'instruction stmfd a eu des effets sur le pointeur de pile usr/sys mais pas sur le pointeur de pile IRQ.
+        /* TBE : 13 registre : 13 * 4 = 52 octets */
+        "sub sp, sp, #52\t\n"
         
-		/* Sauvegarde de spsr_irq */
+            
+    	/* Sauvegarde de spsr_irq */
+        /* Question : A-t-on vraiment besoin de passer par r0 ?*/
+        "mrs  r0, spsr\t\n"
+        "stmfd sp!, {r0}\t\n"
+        
         /* et de lr_irq */
-        /* TBE : Sauvegarder spsr_irq (contient cpsr avant system) et lr_irq (contient pc après interupt) sur la pile IRQ
-        
-						);			
+        "stmfd sp!, {lr}"
+                
+	);			
 
     if (_ack_timer)                 /* Réinitialiser le timer si nécessaire */
     {
@@ -185,37 +194,71 @@ void __attribute__((naked)) scheduler( void )
         _ack_timer = 1;
     }
 
-									/* memoriser le pointeur de pile */
-									/* recherche du suivant */
-	 
-									 
-									/* Incrémenter le compteur d'activations  */
-									/* p pointe sur la nouvelle tache courante*/
+    /* memoriser le pointeur de pile */
+    _contexte[_tache_c].sp_irq = sp;
+    
+    /* recherche du suivant */
+    _tache_c = suivant();
+ 							 
+    /* Incrémenter le compteur d'activations  */
+    compteurs[_tache_c] = compteurs[_tache_c];
+    
+    /* p pointe sur la nouvelle tache courante*/
+    p = &_contexte[_tache_c];
 
-  if (p->status == PRET)          /* tache prete ? */
-  {
-									/* Charger sp_irq initial */
-									/* Passer en mode système */
-									/* Charger sp_sys initial */
-									/* status tache -> execution */
-									/* autoriser les interuptions   */
-									/* lancement de la tâche */
-  }
-  else
-  {
-									/* tache deja en execution, restaurer sp_irq */
-  }
+    if (p->status == PRET)          /* tache prete ? */
+    {
+    	/* Charger sp_irq initial */
+        sp = p->sp_irq;
+        
+    	/* Passer en mode système */
+        _set_arm_mode_(ARMMODE_SYS);
+        
+    	/* Charger sp_sys initial */
+        sp = p->sp_ini;
 
-  /* Restaurer le contexte complet depuis la pile IRQ */
-  __asm__ __volatile__(
-									/* Restaurer lr_irq */
-									/* et spsr_irq */
-									/* Restaurer registres mode system */
+    	/* status tache -> execution */
+        p->status = EXEC;
+        
+    	/* autoriser les interuptions   */
+        _irq_enable_();
+        
+    	/* lancement de la tâche */
+        /* TBE : Il faut éxécuter la fonction (type TACHE) à l'adresse tache_adr */
+        /* Question : Quelle est la syntaxe ?"
+        *(p->tache_adr)(); 
+    }
+    else
+    {
+		/* tache deja en execution, restaurer sp_irq */
+        sp = p->sp_irq;
+        
+    }
+
+    /* Restaurer le contexte complet depuis la pile IRQ */
+     __asm__ __volatile__(
+		/* Restaurer lr_irq */
+        "ldmfd sp!, {lr}\t\n"
+        
+		/* et spsr_irq */
+        "ldmfd sp!, {r0}\t\n"
+        "msr  spsr, r0\t\n"
+        
+		/* Restaurer registres mode system */
+        /* On met depile les elements contenu dans la pile pour les affecter aux registre r1 à r12*/
+        "ldmfd sp!, {r0-r12}^\t\n"
+        
 		/* Attendre un cycle */
         "nop\t\n"
-                            		/* Ajuster pointeur de pile irq */
-                                    /* Retour d'exception */
-					  );
+        
+		/* Ajuster pointeur de pile irq */
+        /* Ajout de 52 pour ajuster la pile irq, ldmfd a modifie le pointeur de pile usr/sys.
+        "add sp, sp, #52\t\n"
+        
+        /* Retour d'exception */
+        /*TBE : on met dans pc la valeur de lr et on la soustrait de 4 pour retourner sur l'instruction qui a ete interompu*/
+        "sub pc, lr, #4"
+    	);
 }
 
 
