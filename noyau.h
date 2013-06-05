@@ -67,8 +67,14 @@
       : "r0")
       
 #define _fatal_exception_() \
-    printf("\nFatal exception\n") \
-    _set_arm_mode_(ARMMODE_ABT) \
+    printf("\nFatal exception\n"); \
+    _set_arm_mode_(ARMMODE_ABT); \
+    __asm__ __volatile__(\
+      "mov pc, 0X10\t\n")
+      
+#define _exit_() \
+    printf("\nSortie du programme\n"); \
+    _set_arm_mode_(ARMMODE_ABT); \
     __asm__ __volatile__(\
       "mov pc, 0X10\t\n")
 

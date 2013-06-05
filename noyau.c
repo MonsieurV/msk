@@ -160,15 +160,15 @@ void __attribute__((naked)) scheduler( void )
         /* Sauvegarde registres mode system */
         /* TBE : Mémorise r0, r1, .... , r12 du mode systeme dans la pile IRQ */
         /* Question : Pourquoi prendre les registre de r0-r12 du mode usr/sys alors qu'ils sont inchangé au changement en mode irq */
-        "stmfd sp!, {r0-r12}^\t\n"
+        "stmfd sp, {r0-r12}^\t\n"
         
     	/* Attendre un cycle */
         "nop\t\n"
     
         /* Ajustement pointeur de pile */
-        /* TBE : l'instruction stmfd a eu des effets sur le pointeur de pile usr/sys mais pas sur le pointeur de pile IRQ.
-        /* TBE : 13 registre : 13 * 4 = 52 octets */
-        "sub sp, sp, #52\t\n"
+        /* TBE : l'instruction stmfd a eu des effets sur le pointeur de pile usr/sys mais pas sur le pointeur de pile IRQ. */
+        /* TBE : 13 registre : 15 * 4 = 60 octets */
+        "sub sp, sp, #60\t\n"
         
             
     	/* Sauvegarde de spsr_irq */
@@ -177,7 +177,7 @@ void __attribute__((naked)) scheduler( void )
         "stmfd sp!, {r0}\t\n"
         
         /* et de lr_irq */
-        "stmfd sp!, {lr}"
+        "stmfd sp!, {lr}\t\n"
                 
 	);			
 
@@ -246,18 +246,18 @@ void __attribute__((naked)) scheduler( void )
         
 		/* Restaurer registres mode system */
         /* On met depile les elements contenu dans la pile pour les affecter aux registre r1 à r12*/
-        "ldmfd sp!, {r0-r12}^\t\n"
+        "ldmfd sp, {r0-r14}^\t\n"
         
 		/* Attendre un cycle */
         "nop\t\n"
         
 		/* Ajuster pointeur de pile irq */
-        /* Ajout de 52 pour ajuster la pile irq, ldmfd a modifie le pointeur de pile usr/sys.
-        "add sp, sp, #52\t\n"
+        /* Ajout de 60 pour ajuster la pile irq, ldmfd a modifie le pointeur de pile usr/sys. */
+        "add sp, sp, #60\t\n"
         
         /* Retour d'exception */
         /*TBE : on met dans pc la valeur de lr et on la soustrait de 4 pour retourner sur l'instruction qui a ete interompu*/
-        "sub pc, lr, #4"
+        "subs pc, lr, #4\t\n"
     	);
 }
 

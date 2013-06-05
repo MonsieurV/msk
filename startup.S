@@ -21,9 +21,9 @@ start:
 		ldr  r1, =BSS_END
 		ldr  r2, =0
 lp1_check:
-		cmp  r0,  r1
+		cmp  r1,  r0
 		@ Sortie de la boucle par saut conditionnel si r0 >= r1.
-		bl  lp1_end
+		ble  lp1_end
 		@ Met un 0 à l'adresse r0 de la mémoire
 		@ str, par défaut, copie 4 octets par 4 octets.
 		@ Cela est valide, car nos sections sont alignées sur des multiples de 4.
@@ -31,6 +31,23 @@ lp1_check:
 		str  r2, [r0], #4
 		b  lp1_check
 lp1_end:
+        @Initialisation à 0 de la section DATA.
+        ldr  r0, =DATA_RAM_START
+        ldr  r1, =DATA_ROM_START
+        ldr  r2, =DATA_RAM_END
+lp2_check:
+    	cmp  r2,  r0
+		ble  lp2_end
+        ldr  r3, [r1], #4
+		str  r3, [r0], #4
+		b  lp2_check
+lp2_end:
+        @ Passer en mode SYS.
+        mrs  r0, cpsr
+        bic  r0, r0, #0x1f
+        orr  r0, r0, #0x1f
+        msr  cpsr_c, r0
+        nop
 		@ Initialiser le pointeur de pile SYS.
 		ldr  r0, =MEMORY_END
 		mov  sp, r0
