@@ -31,9 +31,9 @@ lp1_check:
 		str  r2, [r0], #4
 		b  lp1_check
 lp1_end:
-        @Initialisation à 0 de la section DATA.
+        @ Initialisation à 0 de la section DATA.
         ldr  r0, =DATA_RAM_START
-        ldr  r1, =DATA_ROM_START
+        ldr  r1, =DATA_FLASH_START
         ldr  r2, =DATA_RAM_END
 lp2_check:
     	cmp  r2,  r0
