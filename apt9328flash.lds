@@ -6,7 +6,7 @@ _start = 0x00000000;
 
 MEMORY
 {
-    ROM (rx) : ORIGIN = 0, LENGTH = 16M
+    FLASH (rx) : ORIGIN = 0, LENGTH = 16M
     RAM (wx) : ORIGIN = 0x08000000, LENGTH = 1M
 }
 
@@ -17,19 +17,19 @@ SECTIONS
 	.init : {
         . = ALIGN(4);
 		*(.init)
-	} > ROM
+	} > FLASH
 	.text : {
 		. = ALIGN(4);
 		*(.text)
-	} > ROM
+	} > FLASH
 	.data : {
 		. = ALIGN(4);
 		*(.data)
-	} > RAM AT> ROM
+	} > RAM AT> FLASH
 	.rodata : {
 		. = ALIGN(4);
 		*(.rodata)
-	} > ROM
+	} > FLASH
 	.bss : {
 		. = ALIGN(4);
 		*(.bss)
