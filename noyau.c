@@ -26,11 +26,12 @@ int  _ack_timer = 1;              /* = 1 si il faut acquitter le timer */
 void	noyau_exit(void)
 {
     /* Désactiver les interruptions */
+    _irq_disable_();
     printf("Sortie du noyau\n");
 	/* afficher par exemple le nombre d'activation de chaque tache */
-								
+	
 	/* Terminer l'exécution */
-	exit(0);
+	_exit_();
 }
 
 /*--------------------------------------------------------------------------*
@@ -75,10 +76,10 @@ uint16_t cree( TACHE_ADR adr_tache )
 	/* numero de tache suivant */
     tache++;
 
-    if (tache >= MAX_TACHES)        /* sortie si depassement */
+    if (tache >= MAX_TACHES)
     {
 	    /* sortie car depassement       */
-        _fatal_exception_();        
+        _fatal_exception_("cree() : tache >= MAX_TACHES");        
 	}	
 
 	/* contexte de la nouvelle tache */
@@ -100,7 +101,7 @@ uint16_t cree( TACHE_ADR adr_tache )
     /* mise a l'etat CREE */
     p->status= CREE;
     
-    return(tache);                  /* tache est un uint16_t */
+    return (tache);                  /* tache est un uint16_t */
 }
 
 /*--------------------------------------------------------------------------*
@@ -120,7 +121,7 @@ void  active( uint16_t tache )
     if (p->status == NCREE)
     {
 		/* sortie du noyau         		 */
-        _fatal_exception_();
+        _fatal_exception_("active() : p->status == NCREE");
     }
     
 	/* debut section critique */
@@ -201,7 +202,7 @@ void __attribute__((naked)) scheduler( void )
     _tache_c = suivant();
  							 
     /* Incrémenter le compteur d'activations  */
-    compteurs[_tache_c] = compteurs[_tache_c];
+    compteurs[_tache_c]++;
     
     /* p pointe sur la nouvelle tache courante*/
     p = &_contexte[_tache_c];
@@ -415,7 +416,7 @@ void reveille(uint16_t t)
     if (p->status == NCREE)
     {
     	/* sortie du noyau         		 */
-        _fatal_exception_();
+        _fatal_exception_("reveille : p->status == NCREE");
     }
     
     // On change l'état de la tache puis on la rajoute dans les taches à exécuter.

@@ -51,7 +51,7 @@ void	ajoute ( uint16_t n )
         #if DEBUG
             return;
         #else
-            _fatal_exception_();
+            _fatal_exception_("ajoute() : n >= MAX_TACHES");
         #endif
     }
     // CAS PARTICULIER : la pile est vide.
@@ -84,7 +84,7 @@ void	retire( uint16_t t )
         #if DEBUG
             return;
         #else
-            _fatal_exception_();
+            _fatal_exception_("retire() : t >= MAX_TACHES");
         #endif
     }
     // CAS GENERAL.

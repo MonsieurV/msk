@@ -66,8 +66,11 @@
       : "I" (mode)\
       : "r0")
       
-#define _fatal_exception_() \
-    printf("\nFatal exception\n"); \
+#define _fatal_exception_(message) \
+    printf("\nFatal exception"); \
+    if(message) \
+        printf(" : %s", message); \
+    printf("\n"); \
     _set_arm_mode_(ARMMODE_ABT); \
     __asm__ __volatile__(\
       "mov pc, 0X10\t\n")
