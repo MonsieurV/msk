@@ -82,7 +82,7 @@ uint16_t cree( TACHE_ADR adr_tache )
 	}	
 
 	/* contexte de la nouvelle tache */
-    p = _contexte[tache];
+    p = &_contexte[tache];
     
 
 	/* allocation d'une pile a la tache */
@@ -160,7 +160,7 @@ void __attribute__((naked)) scheduler( void )
         /* Sauvegarde registres mode system */
         /* TBE : Mémorise r0, r1, .... , r12 du mode systeme dans la pile IRQ */
         /* Question : Pourquoi prendre les registre de r0-r12 du mode usr/sys alors qu'ils sont inchangé au changement en mode irq */
-        "stmfd sp, {r0-r12}^\t\n"
+        "stmfd sp, {r0-r14}^\t\n"
         
     	/* Attendre un cycle */
         "nop\t\n"
@@ -385,7 +385,15 @@ void	start( TACHE_ADR adr_tache )
 
 void  dort(void)
 {
-
+    CONTEXTE *p = &_contexte[_tache_c];
+    p->status = SUSP;
+    
+    // On retire la tâche de la file des tâche en cours d'execution
+    retire(_tache_c);
+    
+    // On fait un schedule pour passer à la tache suivante.
+    schedule();
+    
 }
 
 /*-------------------------------------------------------------------------*
@@ -403,12 +411,16 @@ void reveille(uint16_t t)
 {
     CONTEXTE *p = &_contexte[t]; /* acces au contexte tache */
 
+    // Si la tâche n'existe pas, on declanche une erreur
     if (p->status == NCREE)
     {
     	/* sortie du noyau         		 */
         _fatal_exception_();
     }
     
-    // TODO : finir
+    // On change l'état de la tache puis on la rajoute dans les taches à exécuter.
+    p->status = EXEC;
+    ajoute(t);
+    schedule();
 }
 
