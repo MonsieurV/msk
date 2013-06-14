@@ -4,7 +4,7 @@
 /* Les constantes */
 /******************/
 
-#define MAX_SEM     8               /* Nombre maximum de sémaphores     */
+#define MAX_SEM     50               /* Nombre maximum de sémaphores     */
 
 /* Etat des sémaphores */
 /***********************/
