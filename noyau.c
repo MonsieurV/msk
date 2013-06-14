@@ -28,7 +28,7 @@ void	noyau_exit(void)
     /* Désactiver les interruptions */
     _irq_disable_();
     printf("Sortie du noyau\n");
-	/* afficher par exemple le nombre d'activation de chaque tache */
+	/* Afficher par exemple le nombre d'activation de chaque tache */
 	
 	/* Terminer l'exécution */
 	_exit_();
@@ -76,11 +76,9 @@ uint16_t cree( TACHE_ADR adr_tache )
 	/* numero de tache suivant */
     tache++;
 
+    /* Sortie car depassement  */
     if (tache >= MAX_TACHES)
-    {
-	    /* sortie car depassement       */
         _fatal_exception_("cree() : tache >= MAX_TACHES");        
-	}	
 
 	/* contexte de la nouvelle tache */
     p = &_contexte[tache];
@@ -119,10 +117,7 @@ void  active( uint16_t tache )
     CONTEXTE *p = &_contexte[tache]; /* acces au contexte tache */
 
     if (p->status == NCREE)
-    {
-		/* sortie du noyau         		 */
         _fatal_exception_("active() : p->status == NCREE");
-    }
     
 	/* debut section critique */
     _lock_();
@@ -387,14 +382,13 @@ void	start( TACHE_ADR adr_tache )
 void  dort(void)
 {
     CONTEXTE *p = &_contexte[_tache_c];
+    
+    // YTO : TODO Section critique ?
     p->status = SUSP;
-    
-    // On retire la tâche de la file des tâche en cours d'execution
+    // On retire la tâche de la file des tâche en cours d'exécution.
     retire(_tache_c);
-    
-    // On fait un schedule pour passer à la tache suivante.
+    // On fait un schedule pour passer à la tâche suivante.
     schedule();
-    
 }
 
 /*-------------------------------------------------------------------------*
@@ -412,14 +406,11 @@ void reveille(uint16_t t)
 {
     CONTEXTE *p = &_contexte[t]; /* acces au contexte tache */
 
-    // Si la tâche n'existe pas, on declanche une erreur
+    // YTO : TODO Section critique ?
+    // Si la tâche n'existe pas, on déclenche une erreur.
     if (p->status == NCREE)
-    {
-    	/* sortie du noyau         		 */
-        _fatal_exception_("reveille : p->status == NCREE");
-    }
-    
-    // On change l'état de la tache puis on la rajoute dans les taches à exécuter.
+        _fatal_exception_("reveille() : p->status == NCREE");
+    // On change l'état de la tâche, puis on la rajoute dans les tâches à exécuter.
     p->status = EXEC;
     ajoute(t);
     schedule();

@@ -55,7 +55,7 @@
     p = &_sem[sem];
     p->valeur = v;
     p->file.head = 0;
-    p->file.head = p->file.queue;
+    p->file.queue = p->file.head;
     return sem;
  }
  
@@ -86,7 +86,7 @@ void s_close ( ushort n )
  *                           --- P() ---                                    *
  * Entree : Numéro de la sémaphore                                          *
  * Sortie : Néant                                                           *
- * Descrip: TODO                                         *
+ * Descrip: Implémente P(s). Tente de prendre le sémaphore n                *
  *                                                                          *
  * Err. fatale:                                                             *
  *    - si n >= MAX_SEM                                                     *
@@ -97,24 +97,34 @@ void s_close ( ushort n )
 void s_wait ( ushort n )
 {
     SEMAPHORE *p;
-    /* sortie si depassement */
+    
+    /* Sortie si depassement */
     if (n >= MAX_SEM)
         _fatal_exception_("s_wait() : n >= MAX_SEM");
     p = &_sem[n];
+    // Vérifier que le sémaphore est créé.
     if(p->valeur == SEM_NCREE)
         _fatal_exception_("s_wait() : p->valeur == SEM_NCREE");
-    // Mettre à jour la sémaphore.
+    // Mettre à jour le sémaphore.
+    /* Debut section critique */
+    _lock_();
     p->valeur--;
-    p->file.n[tete];
-    tete = (tete+1) % MAX_TACHES;
-    
+    if(p->valeur < 0) {
+        // Mettre en attente la tâche courante.
+        p->file.tache[p->file.head] = _tache_c;
+        p->file.head = (p->file.head+1) % MAX_TACHES;
+    }
+    /* Fin section critique */
+    _unlock_();
+    if(p->valeur < 0)
+        dort();
 }
 
 /*--------------------------------------------------------------------------*
  *                           --- V() ---                                    *
  * Entree : Numéro de la sémaphore                                          *
  * Sortie : Néant                                                           *
- * Descrip: TODO                                         *
+ * Descrip: Implémente V(s). Libère le semaphore n                          *
  *                                                                          *
  * Err. fatale:                                                             *
  *    - si n >= MAX_SEM                                                     *
@@ -124,6 +134,28 @@ void s_wait ( ushort n )
  *--------------------------------------------------------------------------*/
 void s_signal ( ushort n )
 {
+    SEMAPHORE *p;
+    ushort tache;
     
+    /* Sortie si depassement */
+    if (n >= MAX_SEM)
+        _fatal_exception_("s_wait() : n >= MAX_SEM");
+    p = &_sem[n];
+    // Vérifier que le sémaphore est créé.
+    if(p->valeur == SEM_NCREE)
+        _fatal_exception_("s_wait() : p->valeur == SEM_NCREE");
+    // Mettre à jour le sémaphore.
+     /* Debut section critique */
+    _lock_();
+    p->valeur++;
+    if(p->valeur <= 0) {
+        // Sortir une tâche de la file et la relancer.
+        tache = p->file.tache[p->file.queue];
+        p->file.queue = (p->file.queue+1) % MAX_TACHES;
+    }
+    /* Fin section critique */
+    _unlock_();
+    if(p->valeur <= 0)
+        reveille(tache);
 }
  

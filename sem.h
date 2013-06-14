@@ -15,7 +15,7 @@
 /***********************************/
 
 typedef struct {
-  ushort n[MAX_TACHES];       /* adresse de debut de la tache */
+  ushort tache[MAX_TACHES];       /* numéro de la tache */
   ushort head;                /* tête de la file circulaire     */
   ushort queue;               /* queue de la file circulaire     */
 } FIFO;
