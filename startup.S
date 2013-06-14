@@ -54,5 +54,8 @@ lp2_end:
 		@ Appel au main() du C.
 		bl  main
         @ Sortie du main : on ne fait rien, on arrête l'exécution.
+.func    	_main_exit
+.globl		_main_exit
+_main_exit:
         b  .
 .end

@@ -79,7 +79,7 @@
     printf("\nSortie du programme\n"); \
     _set_arm_mode_(ARMMODE_ABT); \
     __asm__ __volatile__(\
-      "mov pc, 0X10\t\n")
+      "bl _main_exit\t\n")
 
 #define ARMMODE_USR   0x10
 #define ARMMODE_SYS   0x1f
