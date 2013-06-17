@@ -7,7 +7,7 @@ _start = 0x00000000;
 MEMORY
 {
     FLASH (rx) : ORIGIN = 0, LENGTH = 1M
-    RAM (wx) : ORIGIN = 0x08000000, LENGTH = 64M
+    RAM (wx) : ORIGIN = 0x08000000, LENGTH = 16M
 }
 
 
@@ -41,5 +41,5 @@ SECTIONS
     DATA_RAM_END = ADDR(.data) + SIZEOF(.bss);
     DATA_FLASH_START = LOADADDR(.data);
     DATA_FLASH_END = LOADADDR(.data) + SIZEOF(.bss);
-	MEMORY_END = 0x0C000000;
+	MEMORY_END = ADDR(RAM) + SIZEOF(RAM);
 }
