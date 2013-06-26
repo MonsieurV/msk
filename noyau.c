@@ -294,9 +294,7 @@ void  schedule( void )
         "add  lr, #12\t\n"
         
 	    /* Saut à scheduler */
-        /* YTO: Faire exécuter le vecteur d'exception IRQ
-         * Adresse du vecteur : 0x00000018 */
-        "mov  pc, #0x18\t\n"
+        "mov  pc, #scheduler\t\n"
    );
    
     /* Repasser en mode system */
