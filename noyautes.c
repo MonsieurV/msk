@@ -5,7 +5,7 @@
 
 #include "serialio.h"
 #include "noyau.h"
-#include "sem"
+#include "sem.h"
 
 /*
  ** Test du noyau preemptif. Lier noyautes.c avec noyau.c et noyaufil.c
@@ -92,7 +92,6 @@ TACHE    diner(void)
     // Une fourchette ne peut être utilisée par qu'un seul philosophe.
     for(i=0; i < 5; i++) {
         forkSTab[i] = s_cree(1);
-        reunionSTab[i] = s_cree(0);
     }
     // Mangeons gaiement - mais soyons polis, chacun son tour !
     for(i=0; i < 5; i++)
@@ -102,13 +101,11 @@ TACHE    diner(void)
     s_close(dinerMangeursS);
     for(i=0; i < 5; i++) {
         s_close(forkSTab[i]);
-        s_close(reunionSTab[i])
     }
     // Relancer une seconde simulation.
     dinerMangeursS = s_cree(4);
     for(i=0; i < 5; i++) {
         forkSTab[i] = s_cree(1);
-        reunionSTab[i] = s_cree(0);
     }
     for(i=0; i < 5; i++)
         active(cree(ph2));
@@ -121,7 +118,7 @@ TACHE    ph(void)
     phI++;
     int i=0;
     long j;
-    puts("------> BONJOUR, je suis le philosophe %d", phI);
+    printf("------> BONJOUR, je suis le philosophe %d", phI);
     while (1) {
         // Les philosophes mangent à des intervalles différents.
         for (j=0; j < (!phI) ? 60000L : 120000L*phI; j++);
@@ -151,7 +148,7 @@ TACHE    ph2(void)
     int i=0;
     long j;
     puts("------> \nSECOND REPAS\n");
-    puts("------> BONJOUR, je suis le philosophe %d", phI);
+    printf("------> BONJOUR, je suis le philosophe %d", phI);
     while (1) {
         // Les philosophes mangent tous au même moment et à la même vitesse.
         for (j=0; j < 60000L; j++);

@@ -27,7 +27,7 @@ void	noyau_exit(void)
 {
     /* Désactiver les interruptions */
     _irq_disable_();
-    printf("Sortie du noyau\n");
+    printf("Sortie du noyau MSK\n");
 	/* Afficher par exemple le nombre d'activation de chaque tache */
 	
 	/* Terminer l'exécution */
@@ -294,7 +294,7 @@ void  schedule( void )
         "add  lr, #12\t\n"
         
 	    /* Saut à scheduler */
-        "mov  pc, #scheduler\t\n"
+        "b scheduler\t\n"
    );
    
     /* Repasser en mode system */
@@ -360,6 +360,9 @@ void	start( TACHE_ADR adr_tache )
     aitc->inttypeh = 0x08000000;
     aitc->inttypel = 0;
     aitc->nipriority[7] = 0xF000;
+    // Activer la gestion des exceptions.
+    aitc->intenableh = 0x08000000;
+    aitc->intenablel = 0;
 
     /* creation et activation premiere tache */
     active(cree(adr_tache));

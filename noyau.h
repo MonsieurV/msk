@@ -67,13 +67,14 @@
       : "r0")
       
 #define _fatal_exception_(message) \
+    _irq_disable_(); \
     printf("\nFatal exception"); \
     if(message) \
         printf(" : %s", message); \
     printf("\n"); \
     _set_arm_mode_(ARMMODE_ABT); \
     __asm__ __volatile__(\
-      "mov pc, 0X10\t\n")
+      "mov pc, #0X10\t\n")
       
 #define _exit_() \
     printf("\nSortie du programme\n"); \
