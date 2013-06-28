@@ -78,9 +78,7 @@ void s_close ( ushort n )
     SEMAPHORE *p;
     /* sortie si depassement */
     if (n >= MAX_SEM)
-    {
         _fatal_exception_("s_close() : n >= MAX_SEM");
-    }
     // Réinitialiser la valeur de la sémaphore.
     p = &_sem[n];
     p->valeur = SEM_NCREE;
@@ -101,7 +99,6 @@ void s_close ( ushort n )
 void s_wait ( ushort n )
 {
     SEMAPHORE *p;
-    
     /* Sortie si depassement */
     if (n >= MAX_SEM)
         _fatal_exception_("s_wait() : n >= MAX_SEM");
@@ -140,7 +137,6 @@ void s_signal ( ushort n )
 {
     SEMAPHORE *p;
     ushort tache;
-    
     /* Sortie si depassement */
     if (n >= MAX_SEM)
         _fatal_exception_("s_wait() : n >= MAX_SEM");

@@ -25,13 +25,16 @@ int  _ack_timer = 1;              /* = 1 si il faut acquitter le timer */
  *----------------------------------------------------------------------- --*/
 void	noyau_exit(void)
 {
+    ushort i;
     /* Désactiver les interruptions */
     _irq_disable_();
     printf("Sortie du noyau MSK\n");
-	/* Afficher par exemple le nombre d'activation de chaque tache */
-	
-	/* Terminer l'exécution */
-	_exit_();
+    /* Afficher par exemple le nombre d'activation de chaque tache */
+    for(i=0; i<MAX_TACHES; i++)
+        printf("%d ------> %d\n", i, compteurs[i]);
+    printf("\n");
+    /* Terminer l'exécution */
+    _exit_();
 }
 
 /*--------------------------------------------------------------------------*
@@ -45,12 +48,9 @@ void  fin_tache(void)
 {
     /* on interdit les interruptions */
     _irq_disable_();
-    
     /* la tache est enlevee de la file des taches */
     _contexte[_tache_c].status = CREE;
     retire(_tache_c);
-    
-    /* TBE : Réordonnancer les tâches (schedule réactive les interruption IRQ) */
     schedule();
 }
 
@@ -66,39 +66,28 @@ void  fin_tache(void)
  *--------------------------------------------------------------------------*/
 uint16_t cree( TACHE_ADR adr_tache )
 {
-  CONTEXTE *p;                    /* pointeur d'une case de _contexte */
-  static   uint16_t tache = -1;   /* contient numero dernier cree */
-
-
-	/* debut section critique */
+    CONTEXTE *p;                    /* pointeur d'une case de _contexte */
+    static   uint16_t tache = -1;   /* contient numero dernier cree */
+    /* debut section critique */
     _lock_();
-    
-	/* numero de tache suivant */
+    /* numero de tache suivant */
     tache++;
-
     /* Sortie car depassement  */
     if (tache >= MAX_TACHES)
         _fatal_exception_("cree() : tache >= MAX_TACHES");        
-
-	/* contexte de la nouvelle tache */
+    /* contexte de la nouvelle tache */
     p = &_contexte[tache];
-    
-
-	/* allocation d'une pile a la tache */
+    /* allocation d'une pile a la tache */
     p->sp_ini = _tos;
     p->sp_irq = _tos - PILE_TACHE;
-    
-	/* decrementation du pointeur de pile pour la prochaine tache. */
+    /* decrementation du pointeur de pile pour la prochaine tache. */
     _tos = _tos - PILE_IRQ - PILE_TACHE;
-
-	/* fin section critique */
+    /* fin section critique */
     _unlock_();
-
-	/* memorisation adresse debut de tache */
+    /* memorisation adresse debut de tache */
     p->tache_adr = adr_tache;
     /* mise a l'etat CREE */
     p->status= CREE;
-    
     return (tache);                  /* tache est un uint16_t */
 }
 
@@ -115,26 +104,20 @@ uint16_t cree( TACHE_ADR adr_tache )
 void  active( uint16_t tache )
 {
     CONTEXTE *p = &_contexte[tache]; /* acces au contexte tache */
-
     if (p->status == NCREE)
         _fatal_exception_("active() : p->status == NCREE");
-    
-	/* debut section critique */
+    /* debut section critique */
     _lock_();
-    
     if (p->status == CREE)          	/* n'active que si receptif */
     {
-	    /* changement d'etat, mise a l'etat PRET */
+        /* changement d'etat, mise a l'etat PRET */
         p->status = PRET;
-        
-	    /* ajouter la tache dans la liste */
+        /* ajouter la tache dans la liste */
         ajoute(tache);
-        
-	    /* activation d'une tache prete */
+        /* activation d'une tache prete */
         schedule();    
     }
-    
-	/* fin section critique */
+    /* fin section critique */
     _unlock_();
 }
 
@@ -148,40 +131,26 @@ void  active( uint16_t tache )
  *--------------------------------------------------------------------------*/
 void __attribute__((naked)) scheduler( void )
 {
-  register CONTEXTE *p;
-  register unsigned int sp asm("sp");  /* Pointeur de pile */
-
-  /* Sauvegarder le contexte complet sur la pile IRQ */
-  __asm__ __volatile__(
+    register CONTEXTE *p;
+    register unsigned int sp asm("sp");  /* Pointeur de pile */
+    /* Sauvegarder le contexte complet sur la pile IRQ */
+    __asm__ __volatile__(
         /* Sauvegarde registres mode system */
-        /* TBE : Mémorise r0, r1, .... , r12 du mode systeme dans la pile IRQ */
-        /* Question : Pourquoi prendre les registre de r0-r12 du mode usr/sys alors qu'ils sont inchangé au changement en mode irq */
         "stmfd sp, {r0-r14}^\t\n"
-        
     	/* Attendre un cycle */
         "nop\t\n"
-    
         /* Ajustement pointeur de pile */
-        /* TBE : l'instruction stmfd a eu des effets sur le pointeur de pile usr/sys mais pas sur le pointeur de pile IRQ. */
-        /* TBE : 13 registre : 15 * 4 = 60 octets */
         "sub sp, sp, #60\t\n"
-        
-            
     	/* Sauvegarde de spsr_irq */
-        /* Question : A-t-on vraiment besoin de passer par r0 ?*/
         "mrs  r0, spsr\t\n"
         "stmfd sp!, {r0}\t\n"
-        
         /* et de lr_irq */
         "stmfd sp!, {lr}\t\n"
-                
-	);			
-
+    );			
     if (_ack_timer)                 /* Réinitialiser le timer si nécessaire */
     {
     	/* Acquiter l'événement de comparaison du Timer pour pouvoir */
     	/* obtenir le déclencement d'une prochaine interruption */
-        // YTO: Mettre TSTAT_COMP à 0;
         struct imx_timer* tim1 = (struct imx_timer *) TIMER1_BASE;
         tim1->tstat &= ~TSTAT_COMP;
     }
@@ -189,70 +158,50 @@ void __attribute__((naked)) scheduler( void )
     {
         _ack_timer = 1;
     }
-
     /* memoriser le pointeur de pile */
     _contexte[_tache_c].sp_irq = sp;
-    
     /* recherche du suivant */
     _tache_c = suivant();
- 							 
     /* Incrémenter le compteur d'activations  */
     compteurs[_tache_c]++;
-    
     /* p pointe sur la nouvelle tache courante*/
     p = &_contexte[_tache_c];
-
     if (p->status == PRET)          /* tache prete ? */
     {
     	/* Charger sp_irq initial */
         sp = p->sp_irq;
-        
     	/* Passer en mode système */
         _set_arm_mode_(ARMMODE_SYS);
-        
     	/* Charger sp_sys initial */
         sp = p->sp_ini;
-
     	/* status tache -> execution */
         p->status = EXEC;
-        
     	/* autoriser les interuptions   */
         _irq_enable_();
-        
     	/* lancement de la tâche */
-        /* TBE : Il faut éxécuter la fonction (type TACHE) à l'adresse tache_adr */
-        /* Question : Quelle est la syntaxe ?"
         *(p->tache_adr)(); 
     }
     else
     {
-		/* tache deja en execution, restaurer sp_irq */
+    	/* tache deja en execution, restaurer sp_irq */
         sp = p->sp_irq;
-        
     }
-
     /* Restaurer le contexte complet depuis la pile IRQ */
      __asm__ __volatile__(
-		/* Restaurer lr_irq */
+    	/* Restaurer lr_irq */
         "ldmfd sp!, {lr}\t\n"
-        
-		/* et spsr_irq */
+    	/* et spsr_irq */
         "ldmfd sp!, {r0}\t\n"
         "msr  spsr, r0\t\n"
-        
-		/* Restaurer registres mode system */
+    	/* Restaurer registres mode system */
         /* On met depile les elements contenu dans la pile pour les affecter aux registre r1 à r12*/
         "ldmfd sp, {r0-r14}^\t\n"
-        
-		/* Attendre un cycle */
+    	/* Attendre un cycle */
         "nop\t\n"
-        
-		/* Ajuster pointeur de pile irq */
+    	/* Ajuster pointeur de pile irq */
         /* Ajout de 60 pour ajuster la pile irq, ldmfd a modifie le pointeur de pile usr/sys. */
         "add sp, sp, #60\t\n"
-        
         /* Retour d'exception */
-        /*TBE : on met dans pc la valeur de lr et on la soustrait de 4 pour retourner sur l'instruction qui a ete interompu*/
         "subs pc, lr, #4\t\n"
     	);
 }
@@ -267,40 +216,25 @@ void __attribute__((naked)) scheduler( void )
  *--------------------------------------------------------------------------*/
 void  schedule( void )
 {
-	/* Debut section critique */
+    /* Debut section critique */
     _lock_();
-
-    // YTO: Ne pas acquitter le timer si on a provoqué manuellement l'exception.
     _ack_timer = 0;
-
     /* On simule une exception irq pour forcer un appel correct à scheduler().*/
-	/* Passer en mode IRQ */
+    /* Passer en mode IRQ */
     _set_arm_mode_(ARMMODE_IRQ);
-  __asm__ __volatile__(
-		/* Sauvegarder cpsr dans spsr */
+    __asm__ __volatile__(
+    	/* Sauvegarder cpsr dans spsr */
         "mrs  r0, cpsr\t\n"
-		"msr  spsr, r0\t\n"
-        
-		/* Sauvegarder pc dans lr et l'ajuster */
+    	"msr  spsr, r0\t\n"
+    	/* Sauvegarder pc dans lr et l'ajuster */
         "mov  lr, pc\t\n"
-        /* YTO: on ne veut pas que ce soit l'instruction courante qui soit
-         * exécutée en retour de scheduler(), ni non plus la suivante, 
-         * mais celle d'après.
-         * Quelle est la valeur de pc lors de l'instruction " mov  lr, pc" ?
-         * D'après http://stackoverflow.com/questions/2102921/strange-behaviour-of-ldr-pc-value
-         * la valeur est celle de l'instruction suivante (la courante + 12 bytes).
-         * Il faut donc encore décaler de 12 bytes pour obtenir l'instruction à n+2.
-         * TODO Vérifier en debug. */
         "add  lr, #12\t\n"
-        
-	    /* Saut à scheduler */
+        /* Saut à scheduler */
         "b scheduler\t\n"
-   );
-   
+    );
     /* Repasser en mode system */
     _set_arm_mode_(ARMMODE_SYS);
-
-	/* Fin section critique */
+    /* Fin section critique */
     _unlock_();
 }
 
@@ -320,7 +254,6 @@ void	start( TACHE_ADR adr_tache )
     register unsigned int sp asm("sp");
     struct imx_timer* tim1 = (struct imx_timer *) TIMER1_BASE;
     struct imx_aitc* aitc = (struct imx_aitc *) AITC_BASE;
-    
     for (j=0; j<MAX_TACHES; j++)
     {
         /* initialisation de l'etat des taches */
@@ -328,33 +261,29 @@ void	start( TACHE_ADR adr_tache )
     }
     /* initialisation de la tache courante */
     _tache_c = 0;
-	/* initialisation de la file           */
+    /* initialisation de la file           */
     file_init();
-
-	/* Initialisation de la variable Haut de la pile des tâches */
+    /* Initialisation de la variable Haut de la pile des tâches */
     _tos = sp;
-	/* Passer en mode IRQ */
+    /* Passer en mode IRQ */
     _set_arm_mode_(ARMMODE_IRQ);
-	/* sp_irq initial */
+    /* sp_irq initial */
     sp = _tos;
-	/* Repasser en mode SYS */
+    /* Repasser en mode SYS */
     _set_arm_mode_(ARMMODE_SYS);
-
-	/* on interdit les interruptions */
+    /* on interdit les interruptions */
     _irq_disable_();
-
     /* Initialisation du timer à 100 Hz */
     // YTO/TBE : TCTCL1 : SWR = 0 - FRR = 0 - CAP = 00 - OM = 0 - IRQEN = 1 - CLKSOURCE = 010 - TEN = 1
     // TODO Faire avec des maks.
     // tim1->tctl |= TCTL_SWR | TCTL_FRR | TCTL_CAP_ANY | TCTL_OM;
     // tim1->tctl = tim1->tctl & ~TCTL_IRQEN;
     // tim1->tctl = tim1->tctl | TCTL_CLKSOURCE_PERCLK;
-	tim1->tctl = 0x15;
+    tim1->tctl = 0x15;
     // YTO/TBE : TPRER : 0X64 = 100 decimal
-	tim1->tprer = 0x64;
+    tim1->tprer = 0x64;
     // YTO/TBE : TCMP1 : 0X64 = 100 decimal
-	tim1->tcmp = 0x64;
-    
+    tim1->tcmp = 0x64;
     /* Initialisation de l'AITC */
     aitc->nimask = 0x1F;
     aitc->inttypeh = 0x08000000;
@@ -363,7 +292,6 @@ void	start( TACHE_ADR adr_tache )
     // Activer la gestion des exceptions.
     aitc->intenableh = 0x08000000;
     aitc->intenablel = 0;
-
     /* creation et activation premiere tache */
     active(cree(adr_tache));
 }
@@ -383,8 +311,6 @@ void	start( TACHE_ADR adr_tache )
 void  dort(void)
 {
     CONTEXTE *p = &_contexte[_tache_c];
-    
-    // YTO : TODO Section critique ?
     p->status = SUSP;
     // On retire la tâche de la file des tâche en cours d'exécution.
     retire(_tache_c);
@@ -406,8 +332,6 @@ void  dort(void)
 void reveille(uint16_t t)
 {
     CONTEXTE *p = &_contexte[t]; /* acces au contexte tache */
-
-    // YTO : TODO Section critique ?
     // Si la tâche n'existe pas, on déclenche une erreur.
     if (p->status == NCREE)
         _fatal_exception_("reveille() : p->status == NCREE");
@@ -416,4 +340,3 @@ void reveille(uint16_t t)
     ajoute(t);
     schedule();
 }
-
