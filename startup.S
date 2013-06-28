@@ -31,7 +31,7 @@ lp1_check:
 		str  r2, [r0], #4
 		b  lp1_check
 lp1_end:
-        @ Initialisation à 0 de la section DATA.
+        @ Chargement de la section DATA en mémoire vive à partir des données en flash.
         ldr  r0, =DATA_RAM_START
         ldr  r1, =DATA_FLASH_START
         ldr  r2, =DATA_RAM_END
